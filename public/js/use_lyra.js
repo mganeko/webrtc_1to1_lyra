@@ -11,7 +11,7 @@ Module().then((module) => {
 });
 
 
-function modifyDesc(desc, audioCodec) {
+export function modifyDesc(desc, audioCodec) {
   let modifiedSDP = desc.sdp;
   if (audioCodec === "lyra" || audioCodec === "pcm") {
     modifiedSDP = addL16ToSDP(modifiedSDP);
@@ -39,7 +39,7 @@ function removeCNFromSDP(sdp) {
     .replace(" 106 105 13", "");
 }
 
-function encodeFunction(encodedFrame, controller) {
+export function encodeFunction(encodedFrame, controller) {
   const inputDataArray = new Uint8Array(encodedFrame.data);
 
   const inputBufferPtr = codecModule._malloc(encodedFrame.data.byteLength);
@@ -63,7 +63,7 @@ function encodeFunction(encodedFrame, controller) {
   controller.enqueue(encodedFrame);
 }
 
-function decodeFunction(encodedFrame, controller) {
+export function decodeFunction(encodedFrame, controller) {
   const newData = new ArrayBuffer(16000 * 0.02 * 2);
   if (encodedFrame.data.byteLength > 0) {
     const inputDataArray = new Uint8Array(encodedFrame.data);

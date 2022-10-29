@@ -31,15 +31,21 @@
 
   <!-- -->
   <!--
-<script type='text/javascript' src='./webrtc_async_ws.js'></script>
--->
+  <script type='text/javascript' src='./webrtc_async_ws.js'></script>
+  -->
+  <!-- <script type='module' src='./js/use_lyra.js'></script> -->
+
   <script type='module'>
+    import * as lyra from './js/use_lyra.js';
+
     import * as webrtc from './js/webrtc_async_module.js';
     webrtc.setRemoteVideoHandler(playRemoteVideo);
     webrtc.setCleanUpHandler(cleanUp);
     //webrtc.setIceType(webrtc.ICETYPE_VANILLA);
     webrtc.setIceType(webrtc.ICETYPE_TRICKLE);
     webrtc.setSendIceCandidateHandler(sendIceCandidate);
+    webrtc.setEncodeDecodeFunc(lyra.encodeFunction, lyra.decodeFunction);
+    webrtc.setModifySdpFunc(lyra.modifyDesc);
 
     import * as signaling from './js/ws_signaling_module.js';
     signaling.setRceiveSdpHandeler(receiveSdp);
@@ -53,7 +59,7 @@
 
     import * as media from './js/media_module.js';
 
-    import * as lyra from './js/use_lyra.js';
+    //import * as lyra from './js/use_lyra.js';
 
     const localVideo = document.getElementById('local_video');
     const remoteVideo = document.getElementById('remote_video');
@@ -179,7 +185,7 @@
 
     function playRemoteVideo(stream) {
       playVideo(remoteVideo, stream)
-      removeVideo.volume = 1.0;
+      remoteVideo.volume = 1.0;
     }
 
     function sendIceCandidate(candidate) {
