@@ -1,0 +1,25 @@
+{
+  "name": "webrtc_1to1_lyra",
+  "version": "1.0.0",
+  "description": "simple webrtc web/signaling server with node.js, using Lyra v2",
+  "main": "server_1to1.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server_1to1.js",
+    "with-mdns": "node server_1to1_mdns.js"
+  },
+  "keywords": [
+    "webrtc",
+    "Lyra"
+  ],
+  "author": "mganeko",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mganeko/webrtc_1to1_lyra.git"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.10.0"
+  }
+}
