@@ -74,16 +74,27 @@ export async function connectSignalingAsync(url) {
 
   ws = new WebSocket(wsUrl);
   return new Promise((resolve, reject) => {
-    ws.onopen = (evt) => {
+    // ws.onopen = (evt) => {
+    //   console.log('ws open()');
+    //   resolve();
+    // };
+    ws.addEventListener('open', (event) => {
       console.log('ws open()');
       resolve();
-    };
-    ws.onerror = (err) => {
+    });
+
+    // ws.onerror = (err) => {
+    //   console.error('ws onerror() ERR:', err);
+    //   reject(err);
+    // };
+    ws.addEventListener('error', (err) => {
       console.error('ws onerror() ERR:', err);
       reject(err);
-    };
-    ws.onmessage = (evt) => {
-      //console.log('ws onmessage() data.type:', evt.data.type);
+    });
+
+    //ws.onmessage = (evt) => {}
+    ws.addEventListener('message', (evt) => {
+      console.log('ws onmessage() data.type:', evt.data.type);
       const message = JSON.parse(evt.data);
       console.log('ws onmessage() message.type:', message.type);
       switch (message.type) {
@@ -114,7 +125,7 @@ export async function connectSignalingAsync(url) {
           break;
         }
       }
-    };
+    });
   });
 }
 
