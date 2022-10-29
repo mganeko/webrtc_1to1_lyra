@@ -219,7 +219,7 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
         console.log('createOffer() succsess');
 
         // lyra
-        const modifiedOffer = modifySdpFunc(offer);
+        const modifiedOffer = modifySdpFunc(offer, "lyra");
 
         await peer.setLocalDescription(modifiedOffer).catch(err => {
           console.error('setLocalDescription(offer) error:', err);
@@ -294,7 +294,7 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
       console.log('createAnswer() succsess');
 
       // lyra
-      const modifiedAnswer = modifySdpFunc(answer);
+      const modifiedAnswer = modifySdpFunc(answer, "lyra");
 
       await peer.setLocalDescription(modifiedAnswer).catch(err => {
         console.error('setLocalDescription(answer) error:', err);

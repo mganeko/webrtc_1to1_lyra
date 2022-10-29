@@ -85,7 +85,8 @@
 
     async function startVideo() {
       const useAudio = document.getElementById('use_audio_check').checked;
-      const options = { video: true, audio: useAudio }
+      //const options = { video: true, audio: useAudio }
+      const options = { video: false, audio: useAudio }
       const stream = await media.getLocalStream(options);
       if (stream) {
         playVideo(localVideo, stream);
