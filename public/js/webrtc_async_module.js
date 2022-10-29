@@ -54,9 +54,20 @@ export function setEncodeDecodeFunc(encode, decode) {
   decodeFunc = decode;
 }
 
+function useEncodeDecode() {
+  return (encodeFunc && decodeFunc);
+}
+
 export function setModifySdpFunc(modify) {
   modifySdpFunc = modify;
 }
+
+function useModifySdp() {
+  return (modifySdpFunc !== null);
+}
+
+
+
 
 // ICE candidateを送るための関数をセットする
 let sendIceCandidateFunc = null;
@@ -131,7 +142,7 @@ let peerConnection = null;
 function prepareNewConnection() {
   const pc_config = {
     "iceServers": [{ "urls": "stun:stun.webrtc.ecl.ntt.com:3478" }],
-    encodedInsertableStreams: true
+    encodedInsertableStreams: useEncodeDecode()
   };
   const peer = new RTCPeerConnection(pc_config);
 
@@ -139,28 +150,30 @@ function prepareNewConnection() {
   peer.ontrack = evt => {
     console.log('-- peer.ontrack() kind:', evt.track.kind);
     remoteVideoFunc(evt.streams[0]);
-
-    if (evt.track.kind === 'audio') {
-      console.log('-- use trasform stream for audio --');
-      const receiver = evt.receiver;
-      const receiverStreams = receiver.createEncodedStreams();
-      const transformStream = new TransformStream({
-        transform: decodeFunc,
-      });
-      receiverStreams.readable
-        //.pipeThrough(transformStream)
-        .pipeTo(receiverStreams.writable);
-    }
-    if (evt.track.kind === 'video') {
-      console.log('-- dummy trasform stream for video --');
-      const receiver = evt.receiver;
-      const receiverStreams = receiver.createEncodedStreams();
-      // const transformStream = new TransformStream({
-      //   transform: decodeFunc,
-      // });
-      receiverStreams.readable
-        //.pipeThrough(transformStream)
-        .pipeTo(receiverStreams.writable);
+    
+    if (useEncodeDecode()) {
+      if (evt.track.kind === 'audio') {
+        console.log('-- use trasform stream for audio --');
+        const receiver = evt.receiver;
+        const receiverStreams = receiver.createEncodedStreams();
+        const transformStream = new TransformStream({
+          transform: decodeFunc,
+        });
+        receiverStreams.readable
+          //.pipeThrough(transformStream)
+          .pipeTo(receiverStreams.writable);
+      }
+      if (evt.track.kind === 'video') {
+        console.log('-- dummy trasform stream for video --');
+        const receiver = evt.receiver;
+        const receiverStreams = receiver.createEncodedStreams();
+        // const transformStream = new TransformStream({
+        //   transform: decodeFunc,
+        // });
+        receiverStreams.readable
+          //.pipeThrough(transformStream)
+          .pipeTo(receiverStreams.writable);
+      }
     }
   };
 
@@ -219,7 +232,7 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
         console.log('createOffer() succsess');
 
         // lyra
-        const modifiedOffer = modifySdpFunc(offer, "lyra");
+        const modifiedOffer = useModifySdp() ? modifySdpFunc(offer, "lyra") : offer;
 
         await peer.setLocalDescription(modifiedOffer).catch(err => {
           console.error('setLocalDescription(offer) error:', err);
@@ -243,25 +256,27 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
       console.log('Adding local stream...');
       stream.getTracks().forEach(track => {
         let sender = peer.addTrack(track, stream);
-        if (track.kind === 'audio') {
-          console.log('-- audio encoder ---');
-          const senderStreams = sender.createEncodedStreams();
-          const transformStream = new TransformStream({
-            transform: encodeFunc,
-          });
-          senderStreams.readable
-            //.pipeThrough(transformStream)
-            .pipeTo(senderStreams.writable);
-        }
-        if (track.kind === 'video') {
-          console.log('-- video dummy encoder ---');
-          const senderStreams = sender.createEncodedStreams();
-          // const transformStream = new TransformStream({
-          //   transform: encodeFunc,
-          // });
-          senderStreams.readable
-            //.pipeThrough(transformStream)
-            .pipeTo(senderStreams.writable);
+        if (useEncodeDecode()) {
+          if (track.kind === 'audio') {
+            console.log('-- audio encoder ---');
+            const senderStreams = sender.createEncodedStreams();
+            const transformStream = new TransformStream({
+              transform: encodeFunc,
+            });
+            senderStreams.readable
+              //.pipeThrough(transformStream)
+              .pipeTo(senderStreams.writable);
+          }
+          if (track.kind === 'video') {
+            console.log('-- video dummy encoder ---');
+            const senderStreams = sender.createEncodedStreams();
+            // const transformStream = new TransformStream({
+            //   transform: encodeFunc,
+            // });
+            senderStreams.readable
+              //.pipeThrough(transformStream)
+              .pipeTo(senderStreams.writable);
+          }
         }
       });
     } else {
@@ -294,7 +309,7 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
       console.log('createAnswer() succsess');
 
       // lyra
-      const modifiedAnswer = modifySdpFunc(answer, "lyra");
+      const modifiedAnswer = useModifySdp() ? modifySdpFunc(answer, "lyra") : answer;
 
       await peer.setLocalDescription(modifiedAnswer).catch(err => {
         console.error('setLocalDescription(answer) error:', err);

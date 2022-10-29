@@ -10,9 +10,11 @@
 
 <body>
   WebRTC ws-signaling 2022 with lyra<br />
+  <input type="checkbox" id="use_video_check" checked="1">use video</input>
   <input type="checkbox" id="use_audio_check" checked="1">use Audio</input>
-  <button type="button" onclick="startVideo();">Start Video</button>
-  <button type="button" onclick="stopVideo();">Stop Video</button>
+  <br />
+  <button type="button" onclick="startVideo();">Start Media</button>
+  <button type="button" onclick="stopVideo();">Stop Media</button>
   &nbsp;
   <button type="button" onclick="connect();">Connect</button>
   <button type="button" onclick="hangUp();">Hang Up</button>
@@ -84,9 +86,11 @@
     }
 
     async function startVideo() {
+      const useVideo = document.getElementById('use_video_check').checked;
       const useAudio = document.getElementById('use_audio_check').checked;
       //const options = { video: true, audio: useAudio }
-      const options = { video: false, audio: useAudio }
+      //const options = { video: false, audio: useAudio }
+      const options = { video: useVideo, audio: useAudio ? { sampleRate: 16000 } : false };
       const stream = await media.getLocalStream(options);
       if (stream) {
         playVideo(localVideo, stream);
