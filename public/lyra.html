@@ -90,7 +90,10 @@
       const useAudio = document.getElementById('use_audio_check').checked;
       //const options = { video: true, audio: useAudio }
       //const options = { video: false, audio: useAudio }
-      const options = { video: useVideo, audio: useAudio ? { sampleRate: 16000 } : false };
+      const options = {
+        video: useVideo ? { width: 320, height: 240 } : false,
+        audio: useAudio ? { sampleRate: 16000 } : false
+      };
       const stream = await media.getLocalStream(options);
       if (stream) {
         playVideo(localVideo, stream);

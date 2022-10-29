@@ -160,7 +160,7 @@ function prepareNewConnection() {
           transform: decodeFunc,
         });
         receiverStreams.readable
-          //.pipeThrough(transformStream)
+          .pipeThrough(transformStream)
           .pipeTo(receiverStreams.writable);
       }
       if (evt.track.kind === 'video') {
@@ -264,7 +264,7 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
               transform: encodeFunc,
             });
             senderStreams.readable
-              //.pipeThrough(transformStream)
+              .pipeThrough(transformStream)
               .pipeTo(senderStreams.writable);
           }
           if (track.kind === 'video') {
