@@ -240,6 +240,7 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
           return;
         });
         console.log('setLocalDescription(offer) succsess');
+        await setVideoBitrate(peerConnection);
 
         if (iceType === ICETYPE_TRICKLE) {
           // go to next step with initial offer SDP
@@ -279,6 +280,27 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
           }
         }
       });
+
+      // --- select video codec AV1 --
+      const { codecs } = RTCRtpSender.getCapabilities('video');
+      //console.log( '== codecs before:', codecs);
+      const preferredCodecMimeType = 'video/AV1';
+      const preferredCodecIndex = codecs.findIndex(c => c.mimeType === preferredCodecMimeType);
+      if (preferredCodecIndex >= 0) {
+        const preferredCodec = codecs[preferredCodecIndex];
+        codecs.splice(preferredCodecIndex, 1);
+        codecs.unshift(preferredCodec);
+      }
+      console.log( '== codecs after:', codecs);
+      //console.log('stream transceivers:', peerConnection.getTransceivers());  
+      peerConnection.getTransceivers().forEach( async transceiver => {
+        const sender = transceiver.sender;
+        console.log('=== transeiver kind=', sender.track.kind);
+        if (sender.track.kind === 'video') {
+          transceiver.setCodecPreferences(codecs);
+        }
+      });
+
     } else {
       console.warn('no local stream, but continue.');
     }
@@ -317,6 +339,7 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
         return;
       });
       console.log('setLocalDescription(answer) succsess')
+      await setVideoBitrate(peerConnection);
 
       if (iceType === ICETYPE_TRICKLE) {
         // go next step with inital answer SDP
@@ -324,6 +347,34 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
       }
     }
   });
+
+  async function setVideoBitrate(peer) {
+    peerConnection.getTransceivers().forEach( async transceiver => {
+      const sender = transceiver.sender;
+      if (sender.track.kind === 'video') {
+        // -- set params --
+        try {
+          const params = sender.getParameters();
+          console.log("=== sender params:", params);
+          if( params.encodings.length > 0 ){
+            params.encodings[0].maxBitrate = 50*1000;
+            params.encodings[0].maxFramerate = 10;
+            //// ... make changes to parameters
+            //params.encodings[0].active = false;
+            await sender.setParameters(params);
+          }
+          else {
+            console.warn('--- Empty encodeings ---');
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    });
+
+  }
+
+
 }
 
 
