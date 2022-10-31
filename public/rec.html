@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Lyra rec/play</title>
+</head>
+
+<!-- TODO
+  [ ] write/read local file with File System Access API
+  [ ] rec/play PCM
+  [ ] rec/play Lyra
+  [ ] use container file for media
+-->
+
+<script>
+  async function getFileHandleToWrite(name) {
+    const handle = await window.showSaveFilePicker({ suggestedName: name });
+    return handle;
+  }
+
+  async function writeTest() {
+    const fileHandle = await getFileHandleToWrite('write_test.txt');
+    //const file = await fileHandle.getFile();
+    //let fileContents = await file.text();
+
+    const writable = await fileHandle.createWritable();
+    await writable.write("aBCdefg\n");
+    await writable.close();
+  }
+
+  // --- media ----
+  let audioCtx = null;
+
+  let localStream = null;
+  async function startMedia() {
+    if (!audioCtx) {
+      audioCtx = new AudioContext();
+    }
+
+    const options = {
+      video: false,
+      //audio: true, // { sampleRate: 16000 }
+      audio: { sampleRate: 16000 }
+    };
+    const stream = await navigator.mediaDevices.getUserMedia(options);
+    if (stream) {
+      localStream = stream;
+      startRec();
+    }
+  }
+
+  function stopMedia() {
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+      localStream = null;
+    }
+  }
+
+  function startRec() {
+    if (!localStream) return;
+
+    const source = new MediaStreamAudioSourceNode(audioCtx, { mediaStream: localStream });
+    source.connect(audioCtx.destination);
+  }
+
+
+</script>
+
+<body>
+  <button onclick="writeTest()">Write</button>
+  <button type="button" onclick="startMedia();">Start Media</button>
+  <button type="button" onclick="stopMedia();">Stop Media</button>
+</body>
+
+</html>
