@@ -6,21 +6,23 @@ Simple 1 to 1 WebRTC video chat example wity Lyra V2(audio) and AV1(video). Only
 
 This repo is using many codes from https://github.com/Flash-Meeting/lyra-webrtc (Apache-2.0 license)
 
-# install
+# Install
+
+Node.js and npm are required.
 
 ```
 $ npm install
 ```
 
-# start
+# How to use
 
-## server
+## start server
 
 ```
 $ export PORT=8080 && node server_1to1.js
 ```
 
-## Client
+## access with Chrome browser
 
 - open http://localhost:8080/lyra.html with Desktop Chrome (106 or later) in 2 tabs.
 - click [Start Media] button of each tab to start capturing Video/Audio.
