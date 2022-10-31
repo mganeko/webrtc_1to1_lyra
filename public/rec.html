@@ -42,7 +42,7 @@
 
     const options = {
       video: false,
-      //audio: true, // { sampleRate: 16000 }
+      //audio: true
       audio: { sampleRate: 16000 }
     };
     const stream = await navigator.mediaDevices.getUserMedia(options);
@@ -59,11 +59,24 @@
     }
   }
 
+  // 
+  //  MediaStreamTrackProcessor
+  //    https://github.com/mayitayew/lyra-demo/blob/main/index.js
+  //  
+  //
+  let processor = null;
+  let generator = null;
   function startRec() {
     if (!localStream) return;
 
-    const source = new MediaStreamAudioSourceNode(audioCtx, { mediaStream: localStream });
-    source.connect(audioCtx.destination);
+    // WebAudio
+    //const source = new MediaStreamAudioSourceNode(audioCtx, { mediaStream: localStream });
+    //source.connect(audioCtx.destination);
+
+    processor = new MediaStreamTrackProcessor(localStream.getAudioTracks[0]);
+    generator = new MediaStreamTrackGenerator('audio');
+
+
   }
 
 
