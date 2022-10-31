@@ -42,8 +42,8 @@
 
     const options = {
       video: false,
-      //audio: true
-      audio: { sampleRate: 16000 }
+      audio: true
+      //audio: { sampleRate: 16000 }
     };
     const stream = await navigator.mediaDevices.getUserMedia(options);
     if (stream) {
@@ -66,19 +66,57 @@
   //
   let processor = null;
   let generator = null;
-  function startRec() {
+  let transformer = null;
+  let processedStream = null;
+
+  async function startRec() {
     if (!localStream) return;
 
     // WebAudio
     //const source = new MediaStreamAudioSourceNode(audioCtx, { mediaStream: localStream });
     //source.connect(audioCtx.destination);
 
-    processor = new MediaStreamTrackProcessor(localStream.getAudioTracks[0]);
-    generator = new MediaStreamTrackGenerator('audio');
-
-
+    const audioTrack = localStream.getAudioTracks()[0];
+    processor = new MediaStreamTrackProcessor( { track: audioTrack});
+    generator = new MediaStreamTrackGenerator( { kind: 'audio'} );
+    const source = processor.readable;
+    const sink = generator.writable;
+    transformer = new TransformStream({transform: encodeAndDecode()});
+    source.pipeThrough(transformer).pipeTo(sink);
+    processedStream = new MediaStream();
+    processedStream.addTrack(generator);
+    
+    const audio = document.getElementById('playback_audio');
+    audio.srcObject = processedStream;
+    await audio.play();
   }
 
+  function encodeAndDecode() {
+    return (audiodata, controller) => {
+
+      // --- Do nothing --
+      //controller.enqueue(audiodata);
+      // --- Do nothing --
+
+      // --- copy ---
+      const format = 'f32-planar';
+      const current_buffer = new Float32Array(audiodata.numberOfFrames);
+      audiodata.copyTo(current_buffer, {planeIndex: 0, format});
+      const newAudioData = new AudioData({
+        format: format,
+        sampleRate: audiodata.sampleRate,
+        numberOfFrames: audiodata.numberOfFrames,
+        numberOfChannels: 1,
+        timestamp: audiodata.timestamp,
+        
+        // A typed array of audio data.
+        data: current_buffer,
+      });
+      audiodata.close();
+
+      controller.enqueue(newAudioData);
+    }
+  }
 
 </script>
 
@@ -86,6 +124,8 @@
   <button onclick="writeTest()">Write</button>
   <button type="button" onclick="startMedia();">Start Media</button>
   <button type="button" onclick="stopMedia();">Stop Media</button>
+  <br />
+  <audio id="playback_audio" controls="1" width="300px"></audio>
 </body>
 
 </html>
