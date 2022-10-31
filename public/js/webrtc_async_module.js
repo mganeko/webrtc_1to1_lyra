@@ -150,7 +150,7 @@ function prepareNewConnection() {
   peer.ontrack = evt => {
     console.log('-- peer.ontrack() kind:', evt.track.kind);
     remoteVideoFunc(evt.streams[0]);
-    
+
     if (useEncodeDecode()) {
       if (evt.track.kind === 'audio') {
         console.log('-- use trasform stream for audio --');
@@ -291,9 +291,9 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
         codecs.splice(preferredCodecIndex, 1);
         codecs.unshift(preferredCodec);
       }
-      console.log( '== codecs after:', codecs);
+      console.log('== codecs after:', codecs);
       //console.log('stream transceivers:', peerConnection.getTransceivers());  
-      peerConnection.getTransceivers().forEach( async transceiver => {
+      peerConnection.getTransceivers().forEach(async transceiver => {
         const sender = transceiver.sender;
         console.log('=== transeiver kind=', sender.track.kind);
         if (sender.track.kind === 'video') {
@@ -349,15 +349,15 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
   });
 
   async function setVideoBitrate(peer) {
-    peerConnection.getTransceivers().forEach( async transceiver => {
+    peer.getTransceivers().forEach(async transceiver => {
       const sender = transceiver.sender;
       if (sender.track.kind === 'video') {
         // -- set params --
         try {
           const params = sender.getParameters();
           console.log("=== sender params:", params);
-          if( params.encodings.length > 0 ){
-            params.encodings[0].maxBitrate = 50*1000;
+          if (params.encodings.length > 0) {
+            params.encodings[0].maxBitrate = 50 * 1000;
             params.encodings[0].maxFramerate = 10;
             //// ... make changes to parameters
             //params.encodings[0].active = false;
