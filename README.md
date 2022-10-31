@@ -19,7 +19,7 @@ $ npm install
 ## start server
 
 ```
-$ export PORT=8080 && node server_1to1.js
+$ node server_1to1.js
 ```
 
 ## access with Chrome browser
