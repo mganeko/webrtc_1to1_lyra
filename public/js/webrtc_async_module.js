@@ -45,7 +45,7 @@ function getIceType() {
   return _selectedIceType;
 }
 
-// for lyra
+// -- for audio codec (such as lyra) --
 let audioEncodeFunc = null;
 let audioDecodeFunc = null;
 let modifySdpFunc = null;
@@ -68,6 +68,8 @@ function useModifySdp() {
 
 // --- for Video Codec ---
 let preferredVideoCodec = null;
+let videoBitrate = 0;
+let videoFramerate = 0;
 export function setPreferredVideoCodec(codec) {
   preferredVideoCodec = codec;
 }
@@ -78,6 +80,30 @@ function hasPreferredVideoCodec() {
 
 function getPreferredVideoCodec() {
   return preferredVideoCodec;
+}
+
+export function setVideoBitrate(bitrate) {
+  videoBitrate = bitrate;
+}
+
+function useVideoBitrate() {
+  return (videoBitrate > 0);
+}
+
+function getVideoBitrate() {
+  return videoBitrate;
+}
+
+export function setVideoFramerate(framerate) {
+  videoFramerate = framerate;
+}
+
+function useVideoFramerate() {
+  return (videoFramerate > 0);
+}
+
+function getVideoFramerate() {
+  return videoFramerate;
 }
 
 
@@ -243,7 +269,7 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
         });
         console.log('createOffer() succsess');
 
-        // lyra
+        // -- for audio codec (such as lyra) --
         //const modifiedOffer = useModifySdp() ? modifySdpFunc(offer, "lyra") : offer;
         const modifiedOffer = sdpFilter(offer);
 
@@ -253,7 +279,7 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
           return;
         });
         console.log('setLocalDescription(offer) succsess');
-        await setVideoBitrate(peerConnection);
+        await setVideoCondition(peerConnection);
 
         if (iceType === ICETYPE_TRICKLE) {
           // go to next step with initial offer SDP
@@ -348,7 +374,7 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
       });
       console.log('createAnswer() succsess');
 
-      // lyra
+      // -- for audio codec (such as lyra) --
       //const modifiedAnswer = useModifySdp() ? modifySdpFunc(answer, "lyra") : answer;
       const modifiedAnswer = sdpFilter(answer);
 
@@ -357,8 +383,8 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
         reject(err);
         return;
       });
-      console.log('setLocalDescription(answer) succsess')
-      await setVideoBitrate(peerConnection);
+      console.log('setLocalDescription(answer) succsess');
+      await setVideoCondition(peerConnection);
 
       if (iceType === ICETYPE_TRICKLE) {
         // go next step with inital answer SDP
@@ -376,7 +402,7 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
     }
   }
 
-  async function setVideoBitrate(peer) {
+  async function setVideoCondition(peer) {
     peer.getTransceivers().forEach(async transceiver => {
       const sender = transceiver.sender;
       if (sender.track.kind === 'video') {
@@ -385,10 +411,12 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
           const params = sender.getParameters();
           console.log("=== sender params:", params);
           if (params.encodings.length > 0) {
-            params.encodings[0].maxBitrate = 50 * 1000;
-            params.encodings[0].maxFramerate = 10;
-            //// ... make changes to parameters
-            //params.encodings[0].active = false;
+            if (useVideoBitrate()) {
+              params.encodings[0].maxBitrate = getVideoBitrate();
+            }
+            if (useVideoFramerate()) {
+              params.encodings[0].maxFramerate = getVideoFramerate();
+            }
             await sender.setParameters(params);
           }
           else {

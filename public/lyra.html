@@ -51,6 +51,8 @@
     webrtc.setAudioEncodeDecodeFunc(lyra.encodeFunction, lyra.decodeFunction);
     webrtc.setModifySdpFunc(lyra.modifyDesc);
     webrtc.setPreferredVideoCodec('video/AV1');
+    webrtc.setVideoBitrate(50*1000);
+    webrtc.setVideoFramerate(10);
 
     import * as signaling from './js/ws_signaling_module.js';
     signaling.setRceiveSdpHandeler(receiveSdp);
