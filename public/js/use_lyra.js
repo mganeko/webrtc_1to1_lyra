@@ -10,8 +10,8 @@ Module().then((module) => {
   console.log(`Module() error: ${e.name} message: ${e.message}`);
 });
 
-
-export function modifyDesc(desc, audioCodec) {
+const audioCodec = "lyra";
+export function modifyDesc(desc) {
   let modifiedSDP = desc.sdp;
   if (audioCodec === "lyra" || audioCodec === "pcm") {
     modifiedSDP = addL16ToSDP(modifiedSDP);

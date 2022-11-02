@@ -50,6 +50,7 @@
     webrtc.setSendIceCandidateHandler(sendIceCandidate);
     webrtc.setAudioEncodeDecodeFunc(lyra.encodeFunction, lyra.decodeFunction);
     webrtc.setModifySdpFunc(lyra.modifyDesc);
+    webrtc.setPreferredVideoCodec('video/AV1');
 
     import * as signaling from './js/ws_signaling_module.js';
     signaling.setRceiveSdpHandeler(receiveSdp);

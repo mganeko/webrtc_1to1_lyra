@@ -66,7 +66,19 @@ function useModifySdp() {
   return (modifySdpFunc !== null);
 }
 
+// --- for Video Codec ---
+let preferredVideoCodec = null;
+export function setPreferredVideoCodec(codec) {
+  preferredVideoCodec = codec;
+}
 
+function hasPreferredVideoCodec() {
+  return (preferredVideoCodec !== null);
+}
+
+function getPreferredVideoCodec() {
+  return preferredVideoCodec;
+}
 
 
 // ICE candidateを送るための関数をセットする
@@ -232,7 +244,8 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
         console.log('createOffer() succsess');
 
         // lyra
-        const modifiedOffer = useModifySdp() ? modifySdpFunc(offer, "lyra") : offer;
+        //const modifiedOffer = useModifySdp() ? modifySdpFunc(offer, "lyra") : offer;
+        const modifiedOffer = sdpFilter(offer);
 
         await peer.setLocalDescription(modifiedOffer).catch(err => {
           console.error('setLocalDescription(offer) error:', err);
@@ -283,20 +296,25 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
 
       // --- select video codec AV1 --
       const { codecs } = RTCRtpSender.getCapabilities('video');
-      //console.log( '== codecs before:', codecs);
-      const preferredCodecMimeType = 'video/AV1';
-      const preferredCodecIndex = codecs.findIndex(c => c.mimeType === preferredCodecMimeType);
-      if (preferredCodecIndex >= 0) {
-        const preferredCodec = codecs[preferredCodecIndex];
-        codecs.splice(preferredCodecIndex, 1);
-        codecs.unshift(preferredCodec);
+      if (hasPreferredVideoCodec()) {
+        //console.log( '== codecs before:', codecs);
+        const preferredCodecMimeType = getPreferredVideoCodec();
+        const preferredCodecIndex = codecs.findIndex(c => c.mimeType === preferredCodecMimeType);
+        if (preferredCodecIndex >= 0) {
+          const preferredCodec = codecs[preferredCodecIndex];
+          codecs.splice(preferredCodecIndex, 1);
+          codecs.unshift(preferredCodec);
+        }
+        //console.log('== codecs after:', codecs);
       }
-      console.log('== codecs after:', codecs);
-      //console.log('stream transceivers:', peerConnection.getTransceivers());  
+
+      //const audioCodecs = RTCRtpSender.getCapabilities('audio').codecs;
+      //console.log("==audio codecs:", audioCodecs);
+  
       peerConnection.getTransceivers().forEach(async transceiver => {
         const sender = transceiver.sender;
         console.log('=== transeiver kind=', sender.track.kind);
-        if (sender.track.kind === 'video') {
+        if ((sender.track.kind === 'video') && hasPreferredVideoCodec()) {
           transceiver.setCodecPreferences(codecs);
         }
       });
@@ -331,7 +349,8 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
       console.log('createAnswer() succsess');
 
       // lyra
-      const modifiedAnswer = useModifySdp() ? modifySdpFunc(answer, "lyra") : answer;
+      //const modifiedAnswer = useModifySdp() ? modifySdpFunc(answer, "lyra") : answer;
+      const modifiedAnswer = sdpFilter(answer);
 
       await peer.setLocalDescription(modifiedAnswer).catch(err => {
         console.error('setLocalDescription(answer) error:', err);
@@ -347,6 +366,15 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
       }
     }
   });
+
+  function sdpFilter(desc) {
+    if (useModifySdp()) {
+      return modifySdpFunc(desc);
+    }
+    else {
+      return desc;
+    }
+  }
 
   async function setVideoBitrate(peer) {
     peer.getTransceivers().forEach(async transceiver => {
