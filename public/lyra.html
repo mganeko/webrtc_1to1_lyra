@@ -48,7 +48,7 @@
     //webrtc.setIceType(webrtc.ICETYPE_VANILLA);
     webrtc.setIceType(webrtc.ICETYPE_TRICKLE);
     webrtc.setSendIceCandidateHandler(sendIceCandidate);
-    webrtc.setEncodeDecodeFunc(lyra.encodeFunction, lyra.decodeFunction);
+    webrtc.setAudioEncodeDecodeFunc(lyra.encodeFunction, lyra.decodeFunction);
     webrtc.setModifySdpFunc(lyra.modifyDesc);
 
     import * as signaling from './js/ws_signaling_module.js';

@@ -46,20 +46,20 @@ function getIceType() {
 }
 
 // for lyra
-let encodeFunc = null;
-let decodeFunc = null;
+let audioEncodeFunc = null;
+let audioDecodeFunc = null;
 let modifySdpFunc = null;
-export function setEncodeDecodeFunc(encode, decode) {
-  encodeFunc = encode;
-  decodeFunc = decode;
+export function setAudioEncodeDecodeFunc(encodeHandler, decodeHandler) {
+  audioEncodeFunc = encodeHandler;
+  audioDecodeFunc = decodeHandler;
 }
 
 function useEncodeDecode() {
-  return (encodeFunc && decodeFunc);
+  return (audioEncodeFunc && audioDecodeFunc);
 }
 
-export function setModifySdpFunc(modify) {
-  modifySdpFunc = modify;
+export function setModifySdpFunc(modifyHandler) {
+  modifySdpFunc = modifyHandler;
 }
 
 function useModifySdp() {
@@ -157,7 +157,7 @@ function prepareNewConnection() {
         const receiver = evt.receiver;
         const receiverStreams = receiver.createEncodedStreams();
         const transformStream = new TransformStream({
-          transform: decodeFunc,
+          transform: audioDecodeFunc,
         });
         receiverStreams.readable
           .pipeThrough(transformStream)
@@ -168,7 +168,7 @@ function prepareNewConnection() {
         const receiver = evt.receiver;
         const receiverStreams = receiver.createEncodedStreams();
         // const transformStream = new TransformStream({
-        //   transform: decodeFunc,
+        //   transform: audioDecodeFunc,
         // });
         receiverStreams.readable
           //.pipeThrough(transformStream)
@@ -262,7 +262,7 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
             console.log('-- audio encoder ---');
             const senderStreams = sender.createEncodedStreams();
             const transformStream = new TransformStream({
-              transform: encodeFunc,
+              transform: audioEncodeFunc,
             });
             senderStreams.readable
               .pipeThrough(transformStream)
@@ -272,7 +272,7 @@ async function makeSdpAsync(peer, stream, iceType, sdpType) {
             console.log('-- video dummy encoder ---');
             const senderStreams = sender.createEncodedStreams();
             // const transformStream = new TransformStream({
-            //   transform: encodeFunc,
+            //   transform: audioEncodeFunc,
             // });
             senderStreams.readable
               //.pipeThrough(transformStream)
