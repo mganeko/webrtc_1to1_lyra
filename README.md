@@ -4,7 +4,8 @@ Simple 1 to 1 WebRTC video chat example wity Lyra V2(audio) and AV1(video). Only
 
 ## Thaks to
 
-This repo is using many codes from https://github.com/Flash-Meeting/lyra-webrtc (Apache-2.0 license)
+- This repo is using many source codes from https://github.com/Flash-Meeting/lyra-webrtc (Apache-2.0 license)
+- Also source codes to handle AV1 are refering https://github.com/OpenAyame/ayame-web-sdk-samples  (Apache-2.0 license)
 
 # Install
 
