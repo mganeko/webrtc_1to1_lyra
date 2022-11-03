@@ -21,14 +21,15 @@
     return handle;
   }
 
+  let writable = null;
   async function writeTest() {
     const fileHandle = await getFileHandleToWrite('write_test.txt');
     //const file = await fileHandle.getFile();
     //let fileContents = await file.text();
 
-    const writable = await fileHandle.createWritable();
-    await writable.write("aBCdefg\n");
-    await writable.close();
+    writable = await fileHandle.createWritable();
+    //await writable.write("aBCdefg\n");
+    //writable.close();
   }
 
   // --- media ----
@@ -56,6 +57,10 @@
     if (localStream) {
       localStream.getTracks().forEach(track => track.stop());
       localStream = null;
+    }
+
+    if (writable) {
+      writable.close();
     }
   }
 
@@ -101,7 +106,27 @@
       // --- copy ---
       const format = 'f32-planar';
       const current_buffer = new Float32Array(audiodata.numberOfFrames);
+      const int16_buffer = new Int16Array(audiodata.numberOfFrames);
       audiodata.copyTo(current_buffer, {planeIndex: 0, format});
+
+      // --- conver to int16 ---
+      const MAX_INT = 2**15 - 1;
+      for (let i = 0; i < current_buffer.length; i++) {
+        const data = current_buffer[i];
+        if (data > 1) {
+          int16_buffer[i] = MAX_INT;
+        }
+        else if (data < - 1) {
+          int16_buffer[i] = - MAX_INT;
+        }
+        else {
+          int16_buffer[i] = Math.floor(data * MAX_INT);
+        }
+      }
+      if (writable) {
+        writable.write(int16_buffer);
+      }
+
       const newAudioData = new AudioData({
         format: format,
         sampleRate: audiodata.sampleRate,
