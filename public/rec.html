@@ -72,6 +72,8 @@
   let processor = null;
   let generator = null;
   let transformer = null;
+  let encodeTransformer = null;
+  let decodeTransformer = null;
   let processedStream = null;
 
   async function startRec() {
@@ -86,8 +88,14 @@
     generator = new MediaStreamTrackGenerator( { kind: 'audio'} );
     const source = processor.readable;
     const sink = generator.writable;
-    transformer = new TransformStream({transform: encodeAndDecode()});
-    source.pipeThrough(transformer).pipeTo(sink);
+    
+    //transformer = new TransformStream({transform: encodeAndDecode()});
+    //source.pipeThrough(transformer).pipeTo(sink);
+
+    encodeTransformer = new TransformStream({transform: encode()});
+    decodeTransformer = new TransformStream({transform: decode()});
+    source.pipeThrough(encodeTransformer).pipeThrough(decodeTransformer).pipeTo(sink);
+
     processedStream = new MediaStream();
     processedStream.addTrack(generator);
     
@@ -131,8 +139,87 @@
       }
 
       // --- conver to float32 ---
-      float32_buffer
       for (let i = 0; i < current_buffer.length; i++) {
+        const data = int16_buffer[i];
+        float32_buffer[i] = data / MAX_INT;
+      }
+
+      const newAudioData = new AudioData({
+        format: format,
+        sampleRate: audiodata.sampleRate,
+        numberOfFrames: audiodata.numberOfFrames,
+        numberOfChannels: 1,
+        timestamp: audiodata.timestamp,
+        
+        // A typed array of audio data.
+        //data: current_buffer,
+        data: float32_buffer,
+      });
+      audiodata.close();
+
+      controller.enqueue(newAudioData);
+    }
+  }
+
+  function encode() {
+    return (audiodata, controller) => {
+      // --- copy ---
+      const format = 'f32-planar';
+      const newFormat = 's16-planar';
+      const current_buffer = new Float32Array(audiodata.numberOfFrames);
+      const int16_buffer = new Int16Array(audiodata.numberOfFrames);
+      audiodata.copyTo(current_buffer, {planeIndex: 0, format});
+
+      // --- conver to int16 ---
+      const MAX_INT = 2**15 - 1;
+      for (let i = 0; i < current_buffer.length; i++) {
+        const data = current_buffer[i];
+        if (data > 1) {
+          int16_buffer[i] = MAX_INT;
+          console.warn("--over 1");
+        }
+        else if (data < -1) {
+          int16_buffer[i] = - MAX_INT;
+          console.warn("--under -1");
+        }
+        else {
+          int16_buffer[i] = Math.floor(data * MAX_INT);
+        }
+      }
+      if (writable) {
+        writable.write(int16_buffer);
+      }
+
+      const newAudioData = new AudioData({
+        format: newFormat,
+        sampleRate: audiodata.sampleRate,
+        numberOfFrames: audiodata.numberOfFrames,
+        numberOfChannels: 1,
+        timestamp: audiodata.timestamp,
+        
+        // A typed array of audio data.
+        data: int16_buffer,
+      });
+      audiodata.close();
+
+      controller.enqueue(newAudioData);
+    }
+  }
+
+  function decode() {
+    return (audiodata, controller) => {
+
+      // --- copy ---
+      const format = 's16-planar';
+      const newFormat = 'f32-planar';
+      const int16_buffer = new Int16Array(audiodata.numberOfFrames);
+      const float32_buffer = new Float32Array(audiodata.numberOfFrames);
+      audiodata.copyTo(int16_buffer, {planeIndex: 0, format});
+
+      const MAX_INT = 2**15 - 1;
+
+      // --- conver to float32 ---
+      for (let i = 0; i < int16_buffer.length; i++) {
         const data = int16_buffer[i];
         float32_buffer[i] = data / MAX_INT;
       }
