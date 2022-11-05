@@ -165,10 +165,14 @@
     //source.pipeThrough(transformer).pipeTo(sink);
 
     // -- OK --
-    encodeTransformer = new TransformStream({transform: encode()});
-    decodeTransformer = new TransformStream({transform: decode()});
-    source.pipeThrough(encodeTransformer).pipeThrough(decodeTransformer).pipeTo(sink);
+    // encodeTransformer = new TransformStream({transform: encode()});
+    // decodeTransformer = new TransformStream({transform: decode()});
+    // source.pipeThrough(encodeTransformer).pipeThrough(decodeTransformer).pipeTo(sink);
 
+    // --- NG write through --
+    transformer = new TransformStream({transform: writeThroughPCM()});
+    source.pipeThrough(transformer).pipeTo(sink);
+    
     processedStream = new MediaStream();
     processedStream.addTrack(generator);
     
@@ -312,9 +316,24 @@
     }
   }
 
-  function writePCM(int32buf) {
+  function writeThroughPCM() {
+    return (audiodata, controller) => {
+      // --- copy as int16 ---
+      const format = 's16-planar'; // NG: AudioData currently only supports copy conversion to f32-planar.
+      const int16_buffer = new Int16Array(audiodata.numberOfFrames);
+      audiodata.copyTo(int16_buffer, {planeIndex: 0, format});
+
+      // -- write --
+      writePCM(int16_buffer);
+
+      // -- no convert, pass throuh --
+      controller.enqueue(audiodata);
+    }
+  }
+
+  function writePCM(int16buf) {
     if (writable) {
-      writable.write(int32buf);
+      writable.write(int16buf);
     }
   }
 
