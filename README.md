@@ -30,7 +30,7 @@ $ node server_1to1.js
 - click [Connect] button of one of the tabs to connect WebRTC P2P.
 - Communication between 2 tabs will be established.
   - AV1 for Video (50kbps)
-  - Lyra v2 over L16 (PCM) for Audio (6kbps)
+  - Lyra v2 over L16 (PCM) for Audio (about 3kbps)
 - click [Hang up] button of one of the tabs to disconnect.
 - click [Stop Media] button of each tab to stop capturing Video/Audio.
 
