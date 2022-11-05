@@ -21,6 +21,27 @@
     return handle;
   }
 
+  async function getFileHandleToRead(name) {
+    const handles = await window.showOpenFilePicker({
+      types: [
+        {
+          description: 'data',
+          accept: {
+            'data/*': ['.dat', '.wav', '.pcm']
+          }
+        },
+      ],
+      multiple: false
+    });
+
+    if (handles.length >= 1) {
+      return handles[0];
+    }
+    else {
+      return null;
+    }
+  }
+
   let writable = null;
   async function writeTest() {
     const fileHandle = await getFileHandleToWrite('write_test.dat');
@@ -30,6 +51,55 @@
     writable = await fileHandle.createWritable();
     //await writable.write("aBCdefg\n");
     //writable.close();
+  }
+
+  async function slecetWritable() {
+    const fileHandle = await getFileHandleToWrite('pcm_test.dat');
+    writable = await fileHandle.createWritable();
+  }
+  
+  //let readFile = null;
+  let dataArray = null;
+  async function slecetReadable() {
+    const fileHandle = await getFileHandleToRead('pcm_test.dat');
+    const readFile = await fileHandle.getFile();
+    dataArray = await readFile.arrayBuffer();
+    console.log("loaded data:", dataArray);
+  }
+  
+  const PCM_SAMPLE_RATE = 48000;
+  async function playbackPCM() {
+    if (!audioCtx) {
+      audioCtx = new AudioContext();
+    }
+
+    if (!dataArray) {
+      console.warn('--data not loaded');
+      return;
+    }
+
+    const int16_buffer = new Int16Array(dataArray);
+    const audioBuffer = audioCtx.createBuffer(1, int16_buffer.length, PCM_SAMPLE_RATE);
+
+    const MAX_INT = 2**15 - 1;
+    const nowBuffering = audioBuffer.getChannelData(0);
+    for (let i = 0; i < int16_buffer.length; i++) {
+      const data = int16_buffer[i];
+      nowBuffering[i] = data / MAX_INT;
+    }
+
+    // AudioBufferSourceNode を得る
+    // これは AudioBuffer を再生するときに使う AudioNode である
+    const source = audioCtx.createBufferSource();
+
+    // AudioBufferSourceNode にバッファーを設定する
+    source.buffer = audioBuffer;
+
+    // AudioBufferSourceNode を出力先に接続すると音声が聞こえるようになる
+    source.connect(audioCtx.destination);
+
+    // 音源の再生を始める
+    source.start();
   }
 
   // --- media ----
@@ -61,6 +131,7 @@
 
     if (writable) {
       writable.close();
+      writable = null;
     }
   }
 
@@ -186,9 +257,7 @@
           int16_buffer[i] = Math.floor(data * MAX_INT);
         }
       }
-      if (writable) {
-        writable.write(int16_buffer);
-      }
+      writePCM(int16_buffer);
 
       const newAudioData = new AudioData({
         format: newFormat,
@@ -241,12 +310,21 @@
     }
   }
 
+  function writePCM(int32buf) {
+    if (writable) {
+      writable.write(int32buf);
+    }
+  }
+
 </script>
 
 <body>
-  <button onclick="writeTest()">Write</button>
+  <button onclick="slecetWritable()">Write</button>
   <button type="button" onclick="startMedia();">Start Media</button>
   <button type="button" onclick="stopMedia();">Stop Media</button>
+  &nbsp;
+  <button onclick="slecetReadable()">Read</button>
+  <button onclick="playbackPCM()">Play</button>
   <br />
   <audio id="playback_audio" controls="1" width="300px"></audio>
 </body>
