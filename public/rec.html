@@ -160,9 +160,11 @@
     const source = processor.readable;
     const sink = generator.writable;
     
+    // --- OK ----
     //transformer = new TransformStream({transform: encodeAndDecode()});
     //source.pipeThrough(transformer).pipeTo(sink);
 
+    // -- OK --
     encodeTransformer = new TransformStream({transform: encode()});
     decodeTransformer = new TransformStream({transform: decode()});
     source.pipeThrough(encodeTransformer).pipeThrough(decodeTransformer).pipeTo(sink);
@@ -250,7 +252,7 @@
           console.warn("--over 1");
         }
         else if (data < -1) {
-          int16_buffer[i] = - MAX_INT;
+          int16_buffer[i] = -MAX_INT;
           console.warn("--under -1");
         }
         else {
@@ -294,7 +296,7 @@
       }
 
       const newAudioData = new AudioData({
-        format: format,
+        format: newFormat,
         sampleRate: audiodata.sampleRate,
         numberOfFrames: audiodata.numberOfFrames,
         numberOfChannels: 1,
