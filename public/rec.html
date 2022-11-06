@@ -9,13 +9,30 @@
 </head>
 
 <!-- TODO
-  [ ] write/read local file with File System Access API
-  [ ] rec/play PCM
+  [x] write/read local file with File System Access API
+  [x] rec/play PCM
   [ ] rec/play Lyra
   [ ] use container file for media
 -->
 
-<script>
+<!-- lyra meno
+  decode() arg0, arg1, arg2, arg3
+  encode() arg0, arg1, arg2, arg3
+  enocdeDecode() arg0, arg1, arg2, arg3
+-->
+
+
+<script type="module">
+  import Module from './js/webassembly_codec_wrapper.js';
+  import {HeapAudioBuffer} from "./js/audio_helper.js";
+  let codecModule;
+  Module().then((module) => {
+    console.log("Initialized codec's wasmModule.");
+    codecModule = module;
+  }).catch(e => {
+    console.log(`Module() error: ${e.name} message: ${e.message}`);
+  });
+
   async function getFileHandleToWrite(name) {
     const handle = await window.showSaveFilePicker({ suggestedName: name });
     return handle;
@@ -113,8 +130,17 @@
 
     const options = {
       video: false,
-      audio: true
+      //audio: true
       //audio: { sampleRate: 16000 }
+
+      audio: {
+        latency: 0.01,
+        channelCount: 1,
+        sampleRate: 48000,
+        autoGainControl: true,
+        echoCancellation: true,
+        noiseSuppression: true,
+      },
     };
     const stream = await navigator.mediaDevices.getUserMedia(options);
     if (stream) {
@@ -122,6 +148,7 @@
       startRec();
     }
   }
+  window.startMedia = startMedia;
 
   function stopMedia() {
     if (localStream) {
@@ -134,6 +161,8 @@
       writable = null;
     }
   }
+  window.stopMedia = stopMedia;
+
 
   // 
   //  MediaStreamTrackProcessor
@@ -164,14 +193,18 @@
     //transformer = new TransformStream({transform: encodeAndDecode()});
     //source.pipeThrough(transformer).pipeTo(sink);
 
+    // --- try lyra ----
+    transformer = new TransformStream({transform: encodeAndDecodeLyra()});
+    source.pipeThrough(transformer).pipeTo(sink);
+
     // -- OK --
     // encodeTransformer = new TransformStream({transform: encode()});
     // decodeTransformer = new TransformStream({transform: decode()});
     // source.pipeThrough(encodeTransformer).pipeThrough(decodeTransformer).pipeTo(sink);
 
     // --- NG write through --
-    transformer = new TransformStream({transform: writeThroughPCM()});
-    source.pipeThrough(transformer).pipeTo(sink);
+    //transformer = new TransformStream({transform: writeThroughPCM()});
+    //source.pipeThrough(transformer).pipeTo(sink);
     
     processedStream = new MediaStream();
     processedStream.addTrack(generator);
@@ -337,6 +370,76 @@
     }
   }
 
+
+  // ========== Lyra ============
+  let isLyraEnabled = true;
+  let isLyraCodecReady = false;
+  const kNumRequiredFrames = 4;
+  const kNumSamplesPerFrame = 480;
+  const kNumRequiredSamples = kNumSamplesPerFrame * kNumRequiredFrames;
+  let buffer = new Float32Array(kNumRequiredSamples);
+  let buffer_index = 0;
+  let num_frames_copied = 0;
+  let initial_frame_start_time = 0;
+
+  function encodeAndDecodeLyra() {
+    return (audiodata, controller) => {
+      if (!isLyraCodecReady && codecModule.isCodecReady()) {
+        isLyraCodecReady = true;
+        //enableLyraButton.disabled = false;
+        console.log("Lyra codec is ready.");
+      }
+
+      if (!isLyraCodecReady || !isLyraEnabled) {
+        console.log("*****Lyra codec is not in use*****.");
+        controller.enqueue(audiodata);
+      } else {
+        console.log("*****Lyra codec is in use*****.");
+        const format = 'f32-planar';
+
+        const current_buffer = new Float32Array(audiodata.numberOfFrames);
+        audiodata.copyTo(current_buffer, {planeIndex: 0, format});
+
+        // Copy from current buffer to accumulator buffer.
+        for (let i = 0; i < audiodata.numberOfFrames; i++) {
+          buffer[buffer_index % kNumRequiredSamples] = current_buffer[i];
+          buffer_index++;
+        }
+        num_frames_copied++;
+        if (num_frames_copied % kNumRequiredFrames == 0) {
+          // We have enough frames to encode and decode.
+          var heapInputBuffer = new HeapAudioBuffer(codecModule, kNumRequiredSamples, 1, 1);
+          heapInputBuffer.getChannelData(0).set(buffer);
+
+          var heapOutputBuffer = new HeapAudioBuffer(codecModule, kNumRequiredSamples, 1, 1);
+
+          const success = codecModule.encodeAndDecode(heapInputBuffer.getHeapAddress(),
+              kNumRequiredSamples, audiodata.sampleRate,
+              heapOutputBuffer.getHeapAddress());
+
+          if (!success) {
+              console.log("EncodeAndDecode was not successful.");
+              return;
+          }
+
+          const output_buffer = new Float32Array(kNumRequiredSamples);
+          output_buffer.set(heapOutputBuffer.getChannelData(0));
+
+          controller.enqueue(new AudioData({
+              format: format,
+              sampleRate: audiodata.sampleRate,
+              numberOfFrames: kNumRequiredSamples,  // Frames in the audioData object are individual samples.
+              numberOfChannels: 1,
+              timestamp: initial_frame_start_time,
+              // A typed array of audio data.
+              data: output_buffer,
+          }));
+        } else if (num_frames_copied % kNumRequiredFrames == 1) {
+          initial_frame_start_time = audiodata.timestamp;
+        }
+      }
+    };
+  }
 </script>
 
 <body>
