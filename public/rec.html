@@ -370,9 +370,22 @@
     }
   }
 
+  // --- conver to int16 ---
+  const MAX_INT16 = 2**15 - 1;
+  function f32_to_int32(f) {
+    if (f > 1) {
+      return MAX_INT16;
+    }
+    else if (f < -1) {
+      return -MAX_INT16;
+    }
+    else {
+      return Math.floor(f * MAX_INT16);
+    }
+  }
 
   // ========== Lyra ============
-  let isLyraEnabled = true;
+  //let isLyraEnabled = true;
   let isLyraCodecReady = false;
   const kNumRequiredFrames = 4;
   const kNumSamplesPerFrame = 480;
@@ -382,6 +395,9 @@
   let num_frames_copied = 0;
   let initial_frame_start_time = 0;
 
+  // f32 -> s16 
+  //  10ms --> encode
+  //  20ms --> encode
   function encodeAndDecodeLyra() {
     return (audiodata, controller) => {
       if (!isLyraCodecReady && codecModule.isCodecReady()) {
@@ -390,53 +406,86 @@
         console.log("Lyra codec is ready.");
       }
 
-      if (!isLyraCodecReady || !isLyraEnabled) {
+      if (!isLyraCodecReady) {
         console.log("*****Lyra codec is not in use*****.");
         controller.enqueue(audiodata);
-      } else {
-        console.log("*****Lyra codec is in use*****.");
-        const format = 'f32-planar';
+        return;
+      } 
+      
+      // ==== use Lyra ======
+      console.log("*****Lyra codec is in use. nubmerOfFrames=", audiodata.numberOfFrames); // 480, 10ms
+      const format = 'f32-planar';
 
-        const current_buffer = new Float32Array(audiodata.numberOfFrames);
-        audiodata.copyTo(current_buffer, {planeIndex: 0, format});
+      const current_buffer = new Float32Array(audiodata.numberOfFrames);
+      audiodata.copyTo(current_buffer, {planeIndex: 0, format});
 
-        // Copy from current buffer to accumulator buffer.
-        for (let i = 0; i < audiodata.numberOfFrames; i++) {
-          buffer[buffer_index % kNumRequiredSamples] = current_buffer[i];
-          buffer_index++;
+      // ---s16 --
+      const int16_buffer = new Int16Array(audiodata.numberOfFrames);
+      // Copy from current buffer to accumulator buffer.
+      for (let i = 0; i < audiodata.numberOfFrames; i++) {
+        buffer[buffer_index % kNumRequiredSamples] = current_buffer[i];
+        buffer_index++;
+
+        // -- to s16 --
+        int16_buffer[i] = f32_to_int32(current_buffer[i]);
+      }
+      num_frames_copied++;
+    
+      // -- try Lyra --
+      { 
+        const byteLength = int16_buffer.byteLength; //length * 2;
+        const inputDataArray = new Uint8Array(int16_buffer.buffer);
+        const inputBufferPtr = codecModule._malloc(byteLength); // ArrayBuffer, byeLength=640, PCM frame data=16bit, frames=320, 20ms
+        const encodedBufferPtr = codecModule._malloc(2048);
+
+        codecModule.HEAPU8.set(inputDataArray, inputBufferPtr);
+        const length = codecModule.encode(
+          inputBufferPtr,
+          inputDataArray.length,
+          audiodata.sampleRate, //16000,
+          encodedBufferPtr
+        );
+
+        const newData = new ArrayBuffer(length);
+        if (length > 0) {
+          const newDataArray = new Uint8Array(newData);
+          newDataArray.set(codecModule.HEAPU8.subarray(encodedBufferPtr, encodedBufferPtr + length));
         }
-        num_frames_copied++;
-        if (num_frames_copied % kNumRequiredFrames == 0) {
-          // We have enough frames to encode and decode.
-          var heapInputBuffer = new HeapAudioBuffer(codecModule, kNumRequiredSamples, 1, 1);
-          heapInputBuffer.getChannelData(0).set(buffer);
 
-          var heapOutputBuffer = new HeapAudioBuffer(codecModule, kNumRequiredSamples, 1, 1);
+        codecModule._free(inputBufferPtr);
+        codecModule._free(encodedBufferPtr);
+      }
 
-          const success = codecModule.encodeAndDecode(heapInputBuffer.getHeapAddress(),
-              kNumRequiredSamples, audiodata.sampleRate,
-              heapOutputBuffer.getHeapAddress());
+      if (num_frames_copied % kNumRequiredFrames == 0) {
+        // We have enough frames to encode and decode.
+        var heapInputBuffer = new HeapAudioBuffer(codecModule, kNumRequiredSamples, 1, 1);
+        heapInputBuffer.getChannelData(0).set(buffer);
 
-          if (!success) {
-              console.log("EncodeAndDecode was not successful.");
-              return;
-          }
+        var heapOutputBuffer = new HeapAudioBuffer(codecModule, kNumRequiredSamples, 1, 1);
 
-          const output_buffer = new Float32Array(kNumRequiredSamples);
-          output_buffer.set(heapOutputBuffer.getChannelData(0));
+        const success = codecModule.encodeAndDecode(heapInputBuffer.getHeapAddress(),
+            kNumRequiredSamples, audiodata.sampleRate,
+            heapOutputBuffer.getHeapAddress());
 
-          controller.enqueue(new AudioData({
-              format: format,
-              sampleRate: audiodata.sampleRate,
-              numberOfFrames: kNumRequiredSamples,  // Frames in the audioData object are individual samples.
-              numberOfChannels: 1,
-              timestamp: initial_frame_start_time,
-              // A typed array of audio data.
-              data: output_buffer,
-          }));
-        } else if (num_frames_copied % kNumRequiredFrames == 1) {
-          initial_frame_start_time = audiodata.timestamp;
+        if (!success) {
+            console.log("EncodeAndDecode was not successful.");
+            return;
         }
+
+        const output_buffer = new Float32Array(kNumRequiredSamples);
+        output_buffer.set(heapOutputBuffer.getChannelData(0));
+
+        controller.enqueue(new AudioData({
+            format: format,
+            sampleRate: audiodata.sampleRate,
+            numberOfFrames: kNumRequiredSamples,  // Frames in the audioData object are individual samples.
+            numberOfChannels: 1,
+            timestamp: initial_frame_start_time,
+            // A typed array of audio data.
+            data: output_buffer,
+        }));
+      } else if (num_frames_copied % kNumRequiredFrames == 1) {
+        initial_frame_start_time = audiodata.timestamp;
       }
     };
   }

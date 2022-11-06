@@ -41,8 +41,7 @@ function removeCNFromSDP(sdp) {
 
 export function encodeFunction(encodedFrame, controller) {
   const inputDataArray = new Uint8Array(encodedFrame.data);
-
-  const inputBufferPtr = codecModule._malloc(encodedFrame.data.byteLength);
+  const inputBufferPtr = codecModule._malloc(encodedFrame.data.byteLength); // ArrayBuffer, byeLength=640, PCM frame data=16bit, frames=320, 20ms
   const encodedBufferPtr = codecModule._malloc(1024);
 
   codecModule.HEAPU8.set(inputDataArray, inputBufferPtr);
