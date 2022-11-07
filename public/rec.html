@@ -24,7 +24,7 @@
 
 <script type="module">
   import Module from './js/webassembly_codec_wrapper.js';
-  import {HeapAudioBuffer} from "./js/audio_helper.js";
+  import { HeapAudioBuffer } from "./js/audio_helper.js";
   let codecModule;
   Module().then((module) => {
     console.log("Initialized codec's wasmModule.");
@@ -70,20 +70,22 @@
     //writable.close();
   }
 
-  async function slecetWritable() {
+  async function selectWritable() {
     const fileHandle = await getFileHandleToWrite('pcm_test.dat');
     writable = await fileHandle.createWritable();
   }
-  
+  window.selectWritable = selectWritable;
+
   //let readFile = null;
   let dataArray = null;
-  async function slecetReadable() {
+  async function selectReadable() {
     const fileHandle = await getFileHandleToRead('pcm_test.dat');
     const readFile = await fileHandle.getFile();
     dataArray = await readFile.arrayBuffer();
     console.log("loaded data:", dataArray);
   }
-  
+  window.selectReadable = selectReadable;
+
   const PCM_SAMPLE_RATE = 48000;
   async function playbackPCM() {
     if (!audioCtx) {
@@ -98,7 +100,7 @@
     const int16_buffer = new Int16Array(dataArray);
     const audioBuffer = audioCtx.createBuffer(1, int16_buffer.length, PCM_SAMPLE_RATE);
 
-    const MAX_INT = 2**15 - 1;
+    const MAX_INT = 2 ** 15 - 1;
     const nowBuffering = audioBuffer.getChannelData(0);
     for (let i = 0; i < int16_buffer.length; i++) {
       const data = int16_buffer[i];
@@ -118,6 +120,7 @@
     // 音源の再生を始める
     source.start();
   }
+  window.playbackPCM = playbackPCM;
 
   // --- media ----
   let audioCtx = null;
@@ -184,17 +187,17 @@
     //source.connect(audioCtx.destination);
 
     const audioTrack = localStream.getAudioTracks()[0];
-    processor = new MediaStreamTrackProcessor( { track: audioTrack});
-    generator = new MediaStreamTrackGenerator( { kind: 'audio'} );
+    processor = new MediaStreamTrackProcessor({ track: audioTrack });
+    generator = new MediaStreamTrackGenerator({ kind: 'audio' });
     const source = processor.readable;
     const sink = generator.writable;
-    
+
     // --- OK ----
     //transformer = new TransformStream({transform: encodeAndDecode()});
     //source.pipeThrough(transformer).pipeTo(sink);
 
     // --- try lyra ----
-    transformer = new TransformStream({transform: encodeAndDecodeLyra()});
+    transformer = new TransformStream({ transform: encodeAndDecodeLyra() });
     source.pipeThrough(transformer).pipeTo(sink);
 
     // -- OK --
@@ -205,10 +208,10 @@
     // --- NG write through --
     //transformer = new TransformStream({transform: writeThroughPCM()});
     //source.pipeThrough(transformer).pipeTo(sink);
-    
+
     processedStream = new MediaStream();
     processedStream.addTrack(generator);
-    
+
     const audio = document.getElementById('playback_audio');
     audio.srcObject = processedStream;
     await audio.play();
@@ -226,10 +229,10 @@
       const current_buffer = new Float32Array(audiodata.numberOfFrames);
       const int16_buffer = new Int16Array(audiodata.numberOfFrames);
       const float32_buffer = new Float32Array(audiodata.numberOfFrames);
-      audiodata.copyTo(current_buffer, {planeIndex: 0, format});
+      audiodata.copyTo(current_buffer, { planeIndex: 0, format });
 
       // --- conver to int16 ---
-      const MAX_INT = 2**15 - 1;
+      const MAX_INT = 2 ** 15 - 1;
       for (let i = 0; i < current_buffer.length; i++) {
         const data = current_buffer[i];
         if (data > 1) {
@@ -260,7 +263,7 @@
         numberOfFrames: audiodata.numberOfFrames,
         numberOfChannels: 1,
         timestamp: audiodata.timestamp,
-        
+
         // A typed array of audio data.
         //data: current_buffer,
         data: float32_buffer,
@@ -278,10 +281,10 @@
       const newFormat = 's16-planar';
       const current_buffer = new Float32Array(audiodata.numberOfFrames);
       const int16_buffer = new Int16Array(audiodata.numberOfFrames);
-      audiodata.copyTo(current_buffer, {planeIndex: 0, format});
+      audiodata.copyTo(current_buffer, { planeIndex: 0, format });
 
       // --- conver to int16 ---
-      const MAX_INT = 2**15 - 1;
+      const MAX_INT = 2 ** 15 - 1;
       for (let i = 0; i < current_buffer.length; i++) {
         const data = current_buffer[i];
         if (data > 1) {
@@ -304,7 +307,7 @@
         numberOfFrames: audiodata.numberOfFrames,
         numberOfChannels: 1,
         timestamp: audiodata.timestamp,
-        
+
         // A typed array of audio data.
         data: int16_buffer,
       });
@@ -322,9 +325,9 @@
       const newFormat = 'f32-planar';
       const int16_buffer = new Int16Array(audiodata.numberOfFrames);
       const float32_buffer = new Float32Array(audiodata.numberOfFrames);
-      audiodata.copyTo(int16_buffer, {planeIndex: 0, format});
+      audiodata.copyTo(int16_buffer, { planeIndex: 0, format });
 
-      const MAX_INT = 2**15 - 1;
+      const MAX_INT = 2 ** 15 - 1;
 
       // --- conver to float32 ---
       for (let i = 0; i < int16_buffer.length; i++) {
@@ -338,7 +341,7 @@
         numberOfFrames: audiodata.numberOfFrames,
         numberOfChannels: 1,
         timestamp: audiodata.timestamp,
-        
+
         // A typed array of audio data.
         //data: current_buffer,
         data: float32_buffer,
@@ -354,7 +357,7 @@
       // --- copy as int16 ---
       const format = 's16-planar'; // NG: AudioData currently only supports copy conversion to f32-planar.
       const int16_buffer = new Int16Array(audiodata.numberOfFrames);
-      audiodata.copyTo(int16_buffer, {planeIndex: 0, format});
+      audiodata.copyTo(int16_buffer, { planeIndex: 0, format });
 
       // -- write --
       writePCM(int16_buffer);
@@ -371,7 +374,7 @@
   }
 
   // --- conver to int16 ---
-  const MAX_INT16 = 2**15 - 1;
+  const MAX_INT16 = 2 ** 15 - 1;
   function f32_to_int32(f) {
     if (f > 1) {
       return MAX_INT16;
@@ -410,14 +413,14 @@
         console.log("*****Lyra codec is not in use*****.");
         controller.enqueue(audiodata);
         return;
-      } 
-      
+      }
+
       // ==== use Lyra ======
       console.log("*****Lyra codec is in use. nubmerOfFrames=", audiodata.numberOfFrames); // 480, 10ms
       const format = 'f32-planar';
 
       const current_buffer = new Float32Array(audiodata.numberOfFrames);
-      audiodata.copyTo(current_buffer, {planeIndex: 0, format});
+      audiodata.copyTo(current_buffer, { planeIndex: 0, format });
 
       // ---s16 --
       const int16_buffer = new Int16Array(audiodata.numberOfFrames);
@@ -430,9 +433,12 @@
         int16_buffer[i] = f32_to_int32(current_buffer[i]);
       }
       num_frames_copied++;
-    
+
+      ///*
       // -- try Lyra --
-      { 
+      // [ ] sample数を増やす？
+      // [ ] データを間引いて、16Khzにする？ (いまは48khz)
+      {
         const byteLength = int16_buffer.byteLength; //length * 2;
         const inputDataArray = new Uint8Array(int16_buffer.buffer);
         const inputBufferPtr = codecModule._malloc(byteLength); // ArrayBuffer, byeLength=640, PCM frame data=16bit, frames=320, 20ms
@@ -455,6 +461,7 @@
         codecModule._free(inputBufferPtr);
         codecModule._free(encodedBufferPtr);
       }
+      //*/
 
       if (num_frames_copied % kNumRequiredFrames == 0) {
         // We have enough frames to encode and decode.
@@ -464,25 +471,25 @@
         var heapOutputBuffer = new HeapAudioBuffer(codecModule, kNumRequiredSamples, 1, 1);
 
         const success = codecModule.encodeAndDecode(heapInputBuffer.getHeapAddress(),
-            kNumRequiredSamples, audiodata.sampleRate,
-            heapOutputBuffer.getHeapAddress());
+          kNumRequiredSamples, audiodata.sampleRate,
+          heapOutputBuffer.getHeapAddress());
 
         if (!success) {
-            console.log("EncodeAndDecode was not successful.");
-            return;
+          console.log("EncodeAndDecode was not successful.");
+          return;
         }
 
         const output_buffer = new Float32Array(kNumRequiredSamples);
         output_buffer.set(heapOutputBuffer.getChannelData(0));
 
         controller.enqueue(new AudioData({
-            format: format,
-            sampleRate: audiodata.sampleRate,
-            numberOfFrames: kNumRequiredSamples,  // Frames in the audioData object are individual samples.
-            numberOfChannels: 1,
-            timestamp: initial_frame_start_time,
-            // A typed array of audio data.
-            data: output_buffer,
+          format: format,
+          sampleRate: audiodata.sampleRate,
+          numberOfFrames: kNumRequiredSamples,  // Frames in the audioData object are individual samples.
+          numberOfChannels: 1,
+          timestamp: initial_frame_start_time,
+          // A typed array of audio data.
+          data: output_buffer,
         }));
       } else if (num_frames_copied % kNumRequiredFrames == 1) {
         initial_frame_start_time = audiodata.timestamp;
@@ -492,11 +499,11 @@
 </script>
 
 <body>
-  <button onclick="slecetWritable()">Write</button>
+  <button onclick="selectWritable()">Write</button>
   <button type="button" onclick="startMedia();">Start Media</button>
   <button type="button" onclick="stopMedia();">Stop Media</button>
   &nbsp;
-  <button onclick="slecetReadable()">Read</button>
+  <button onclick="selectReadable()">Read</button>
   <button onclick="playbackPCM()">Play</button>
   <br />
   <audio id="playback_audio" controls="1" width="300px"></audio>
